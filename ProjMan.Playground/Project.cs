@@ -75,11 +75,16 @@ public class Project
 
     /// <summary>
     /// Изменяет заказчика проекта.
-    /// Пустое значение очищает поле.
+    /// Пустое значение очищает поле, если текущая стадия допускает его отсутствие.
     /// </summary>
     public void UpdateCustomer(string? customer)
     {
         string? normalizedCustomer = NormalizeOptionalText(customer);
+        if (Status == ProjectStatus.Tender && normalizedCustomer is null)
+        {
+            throw new InvalidOperationException("На стадии тендера заказчик обязателен");
+        }
+
         if (Customer == normalizedCustomer) return;
         Customer = normalizedCustomer;
         MarkAsUpdated();
@@ -87,7 +92,7 @@ public class Project
 
     /// <summary>
     /// Изменяет расположение объекта.
-    /// Пустое значение очищает поле.
+    /// Пустое значение очищает поле, если текущая стадия допускает его отсутствие.
     /// </summary>
     public void UpdateLocation(string? location)
     {
@@ -99,11 +104,16 @@ public class Project
 
     /// <summary>
     /// Изменяет номер тендера проекта.
-    /// Пустое значение очищает поле.
+    /// Пустое значение очищает поле, если текущая стадия допускает его отсутствие.
     /// </summary>
     public void UpdateTenderNumber(string? tenderNumber)
     {
         string? normalizedTenderNumber = NormalizeOptionalText(tenderNumber);
+        if (Status == ProjectStatus.Tender && normalizedTenderNumber is null)
+        {
+            throw new InvalidOperationException("На стадии тендера номер тендера обязателен");
+        }
+
         if (TenderNumber == normalizedTenderNumber) return;
         TenderNumber = normalizedTenderNumber;
         MarkAsUpdated();
@@ -111,37 +121,50 @@ public class Project
 
     /// <summary>
     /// Назначает или изменяет ответственного за проект.
-    /// Значение <see langword="null"/> снимает назначение.
+    /// Значение <see langword="null"/> снимает назначение, если текущая стадия допускает его отсутствие.
     /// </summary>
-    public void SetResponsible(Guid? projectResponsibleId)
+    public void SetResponsible(Guid? responsibleId)
     {
-        if (projectResponsibleId == Guid.Empty)
+        if (responsibleId == Guid.Empty)
         {
-            throw new ArgumentException("Идентификатор ответственного не может быть пустым.", nameof(projectResponsibleId));
+            throw new ArgumentException(
+                "Идентификатор ответственного не может быть пустым.",
+                nameof(responsibleId)
+            );
         }
 
-        if (projectResponsibleId == ProjectResponsibleId) return;
+        if (Status == ProjectStatus.Tender && responsibleId is null)
+        {
+            throw new InvalidOperationException("На стадии тендера ответственный обязателен");
+        }
 
-        ProjectResponsibleId = projectResponsibleId;
+        if (responsibleId == ProjectResponsibleId) return;
+
+        ProjectResponsibleId = responsibleId;
 
         MarkAsUpdated();
     }
 
-
     /// <summary>
     /// Назначает или изменяет администратора проекта.
-    /// Значение <see langword="null"/> снимает назначение.
+    /// Значение <see langword="null"/> снимает назначение, если текущая стадия допускает его отсутствие.
     /// </summary>
-    public void SetAdministrator(Guid? projectAdministratorId)
+    public void SetAdministrator(Guid? administratorId)
     {
-        if (projectAdministratorId == Guid.Empty)
+        if (administratorId == Guid.Empty)
         {
-            throw new ArgumentException("Идентификатор администратора не может быть пустым.", nameof(projectAdministratorId));
+            throw new ArgumentException("Идентификатор администратора не может быть пустым.",
+                nameof(administratorId));
         }
 
-        if (projectAdministratorId == ProjectAdministratorId) return;
+        if (Status == ProjectStatus.Tender && administratorId is null)
+        {
+            throw new InvalidOperationException("На стадии тендера администратор обязателен");
+        }
 
-        ProjectAdministratorId = projectAdministratorId;
+        if (administratorId == ProjectAdministratorId) return;
+
+        ProjectAdministratorId = administratorId;
 
         MarkAsUpdated();
     }
@@ -153,5 +176,58 @@ public class Project
     public static Project CreateDraft(string name)
     {
         return new Project(name);
+    }
+
+    /// <summary>
+    /// Создаёт проект в статусе тендера с обязательными сведениями
+    /// и назначенными участниками.
+    /// </summary>
+    public static Project CreateTender(
+        string name,
+        string customer,
+        string tenderNumber,
+        Guid administratorId,
+        Guid responsibleId)
+    {
+        string? normalizedCustomer = NormalizeOptionalText(customer);
+
+        if (normalizedCustomer is null)
+        {
+            throw new ArgumentException(
+                "Заказчик не может быть пустым.",
+                nameof(customer));
+        }
+
+        string? normalizedTenderNumber = NormalizeOptionalText(tenderNumber);
+
+        if (normalizedTenderNumber is null)
+        {
+            throw new ArgumentException(
+                "Номер тендера не может быть пустым.",
+                nameof(tenderNumber));
+        }
+
+        if (administratorId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Администратор проекта не может быть пустым.",
+                nameof(administratorId));
+        }
+
+        if (responsibleId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Ответственный проекта не может быть пустым.",
+                nameof(responsibleId));
+        }
+
+        Project project = new Project(name);
+        project.Customer = normalizedCustomer;
+        project.TenderNumber = normalizedTenderNumber;
+        project.ProjectAdministratorId = administratorId;
+        project.ProjectResponsibleId = responsibleId;
+        project.Status = ProjectStatus.Tender;
+
+        return project;
     }
 }

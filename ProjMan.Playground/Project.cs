@@ -230,4 +230,31 @@ public class Project
 
         return project;
     }
+    
+    /// <summary>
+    /// Изменяет реквизиты договора.
+    /// Пустые строки и null очищают соответствующие поля.
+    /// Дата изменения обновляется только при изменении реквизитов.
+    /// </summary>
+    public void UpdateContract(
+        string? number,
+        DateOnly? date,
+        string? terms)
+    {
+        string? normalizedNumber = NormalizeOptionalText(number);
+        string? normalizedTerms = NormalizeOptionalText(terms);
+
+        if (ContractNumber == normalizedNumber &&
+            ContractDate == date &&
+            ContractTerms == normalizedTerms)
+        {
+            return;
+        }
+
+        ContractNumber = normalizedNumber;
+        ContractDate = date;
+        ContractTerms = normalizedTerms;
+
+        MarkAsUpdated();
+    }
 }

@@ -257,4 +257,44 @@ public class Project
 
         MarkAsUpdated();
     }
+    
+    /// <summary>
+    /// Переводит черновик в тендер при наличии обязательных сведений
+    /// и назначенных участников.
+    /// </summary>
+    public void MoveToTender()
+    {
+        if (Status != ProjectStatus.Draft)
+        {
+            throw new InvalidOperationException(
+                "Перевести в тендер можно только проект в статусе черновика.");
+        }
+
+        if (ProjectAdministratorId is null)
+        {
+            throw new InvalidOperationException(
+                "Для перевода проекта в тендер должен быть назначен администратор проекта");
+        }
+        
+        if (ProjectResponsibleId is null)
+        {
+            throw new InvalidOperationException(
+                "Для перевода проекта в тендер должен быть назначен ответственный проекта");
+        }
+        
+        if (TenderNumber is null)
+        {
+            throw new InvalidOperationException(
+                "Для перевода проекта в тендер нужно указать номер тендера");
+        }
+        
+        if (Customer is null)
+        {
+            throw new InvalidOperationException(
+                "Для перевода проекта в тендер нужно указать заказчика");
+        }
+        
+        Status = ProjectStatus.Tender;
+        MarkAsUpdated();
+    }
 }

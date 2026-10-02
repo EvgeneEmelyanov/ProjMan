@@ -107,7 +107,7 @@ public class ProjectTests
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("\t")]
-    public void UpdateContract_WhenAllValuesAreNull_ClearsContract(
+    public void UpdateContract_WhenValuesAreEmpty_ClearsContract(
         string? emptyTest)
     {
         // Arange
@@ -122,5 +122,78 @@ public class ProjectTests
         Assert.That(project.ContractDate, Is.Null);
         Assert.That(project.ContractTerms, Is.Null);
             
+    }
+    
+    [Test]
+    public void MoveToTender_WhenRequiredDataIsFilled_PreservesProjectIdentity()
+    {
+        // Arrange
+        var project = Project.CreateDraft("БКТП 630 кВА");
+
+        project.UpdateCustomer("Заказчик");
+        project.UpdateTenderNumber("Т-15");
+        project.SetAdministrator(Guid.NewGuid());
+        project.SetResponsible(Guid.NewGuid());
+
+        var originalId = project.Id;
+        var originalCreatedAt = project.CreatedAt;
+
+        // Act
+        project.MoveToTender();
+
+        // Assert
+        Assert.That(project.Status, Is.EqualTo(ProjectStatus.Tender));
+        Assert.That(project.Id, Is.EqualTo(originalId));
+        Assert.That(project.CreatedAt, Is.EqualTo(originalCreatedAt));
+    }
+
+    [TestCase(null, "Т-15", true, true)]
+    [TestCase("Заказчик", null, true, true)]
+    [TestCase("Заказчик", "Т-15", false, true)]
+    [TestCase("Заказчик", "Т-15", true, false)]
+    public void MoveToTender_WhenRequiredDataIsMissing_ThrowsAndPreservesState(
+        string? customer,
+        string? tenderNumber,
+        bool hasAdministrator,
+        bool hasResponsible)
+    {
+        // Arrange
+        var project = Project.CreateDraft("БКТП 630 кВА");
+
+        Guid? administratorId = hasAdministrator ? Guid.NewGuid() : null;
+        Guid? responsibleId = hasResponsible ? Guid.NewGuid() : null;
+
+        project.UpdateCustomer(customer);
+        project.UpdateTenderNumber(tenderNumber);
+        project.SetAdministrator(administratorId);
+        project.SetResponsible(responsibleId);
+
+        var originalUpdatedAt = project.UpdatedAt;
+
+        // Act, Assert
+        Assert.Throws<InvalidOperationException>(() => project.MoveToTender());
+
+        Assert.That(project.Status, Is.EqualTo(ProjectStatus.Draft));
+        Assert.That(project.UpdatedAt, Is.EqualTo(originalUpdatedAt));
+    }
+    
+    [Test]
+    public void MoveToTender_WhenAlreadyTender_ThrowsAndPreservesState()
+    {
+        // Arrange
+        var project = Project.CreateTender(
+            "БКТП 630 кВА",
+            "Заказчик",
+            "Т-15",
+            Guid.NewGuid(),
+            Guid.NewGuid());
+        
+        var originalUpdateAt = project.UpdatedAt;
+        
+        // Act, assert
+        Assert.Throws<InvalidOperationException>(() => project.MoveToTender());
+        
+        Assert.That(project.Status, Is.EqualTo(ProjectStatus.Tender));
+        Assert.That(project.UpdatedAt, Is.EqualTo(originalUpdateAt));
     }
 }
